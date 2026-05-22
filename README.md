@@ -408,13 +408,6 @@ Key metrics to track:
 - **Cache hit rate** - indicates idempotency effectiveness
 - **API response times** - baseline for lazy cleanup latency
 
-## Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Run `npm run lint` to check code quality
-4. Commit with clear messages showing your thinking
-5. Submit a pull request
 
----
 
