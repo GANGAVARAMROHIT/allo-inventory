@@ -131,6 +131,3 @@ npm run seed       # Seed the database
 3. Run `npm run lint` to check code quality
 4. Submit a pull request
 
-## License
-
-MIT
