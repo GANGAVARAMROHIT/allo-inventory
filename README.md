@@ -9,7 +9,7 @@ A production-grade inventory management system demonstrating race-condition-free
 - **Idempotent Operations** - Duplicate requests safely return cached responses (24-hour TTL)
 - **Warehouse Tracking** - Real-time stock level updates across multiple warehouses
 - **20-Second Reservation Window** - Fixed TTL for reservation confirmation
-- **Production-Ready Architecture** - Handles edge cases and failure scenarios
+
 
 ## Tech Stack
 
@@ -68,7 +68,7 @@ npx prisma generate
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000]
 
 #### Testing Locally
 - Create a product and warehouse
@@ -389,24 +389,7 @@ npm run seed       # Seed the database
    - Create and confirm reservation within 20 seconds
    - Stock should decrement (not returned)
 
-## Production Deployment
 
-### Vercel Deployment Checklist
-
-- [ ] PostgreSQL database URL set in environment variables
-- [ ] Redis URL (Upstash) set in environment variables
-- [ ] `DATABASE_URL` or `DIRECT_URL` configured
-- [ ] Run `npm run seed` in production dashboard to populate initial data
-- [ ] Verify API endpoints respond with correct status codes
-- [ ] Test with `Idempotency-Key` header
-
-### Monitoring
-
-Key metrics to track:
-- **Lock acquisition failures** - indicates contention
-- **Expired reservation count** - indicates missed confirmations
-- **Cache hit rate** - indicates idempotency effectiveness
-- **API response times** - baseline for lazy cleanup latency
 
 
 
