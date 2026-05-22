@@ -2,6 +2,9 @@
 
 A production-grade inventory management system demonstrating race-condition-free reservation logic with automatic expiry and idempotent operations. Built with Next.js, Prisma, PostgreSQL, and Redis.
 
+## vercel deployment link 
+🔗 [Visit Website](https://allo-inventory-neon.vercel.app)
+
 ## Features
 
 - **Concurrent Reservation System** - Thread-safe product reservations with distributed locking
