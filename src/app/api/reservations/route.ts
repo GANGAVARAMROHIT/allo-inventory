@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { redis } from '@/lib/redis'
+import { withIdempotency } from '@/lib/idempotency'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -10,64 +11,61 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const parsed = schema.safeParse(body)
+  return withIdempotency(req, async () => {
+    const body = await req.json()
+    const parsed = schema.safeParse(body)
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
-  }
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
+    }
 
-  const { productId, warehouseId, quantity } = parsed.data
+    const { productId, warehouseId, quantity } = parsed.data
 
-  // Redis lock key — one lock per product+warehouse combo
-  const lockKey = `lock:${productId}:${warehouseId}`
-  const lockValue = crypto.randomUUID()
+    const lockKey = `lock:${productId}:${warehouseId}`
+    const lockValue = crypto.randomUUID()
 
-  // Try to acquire lock (expires in 10 seconds)
-  const acquired = await redis.set(lockKey, lockValue, {
-    nx: true,   // only set if not exists
-    ex: 10,     // expire in 10 seconds
-  })
-
-  if (!acquired) {
-    return NextResponse.json(
-      { error: 'Another reservation is in progress, please retry' },
-      { status: 429 }
-    )
-  }
-
-  try {
-    // Check available stock
-    const stock = await prisma.stock.findUnique({
-      where: { productId_warehouseId: { productId, warehouseId } }
+    const acquired = await redis.set(lockKey, lockValue, {
+      nx: true,
+      ex: 10,
     })
 
-    if (!stock || (stock.total - stock.reserved) < quantity) {
+    if (!acquired) {
       return NextResponse.json(
-        { error: 'Not enough stock available' },
-        { status: 409 }
+        { error: 'Another reservation is in progress, please retry' },
+        { status: 429 }
       )
     }
 
-    // Reserve — increment reserved count and create reservation record
-    const expiresAt = new Date(Date.now() + 20 * 1000) // 10 seconds
-
-    const [reservation] = await prisma.$transaction([
-      prisma.reservation.create({
-        data: { productId, warehouseId, quantity, expiresAt, status: 'PENDING' }
-      }),
-      prisma.stock.update({
-        where: { productId_warehouseId: { productId, warehouseId } },
-        data: { reserved: { increment: quantity } }
+    try {
+      const stock = await prisma.stock.findUnique({
+        where: { productId_warehouseId: { productId, warehouseId } }
       })
-    ])
 
-    return NextResponse.json(reservation, { status: 201 })
-  } finally {
-    // Always release the lock
-    const current = await redis.get(lockKey)
-    if (current === lockValue) {
-      await redis.del(lockKey)
+      if (!stock || (stock.total - stock.reserved) < quantity) {
+        return NextResponse.json(
+          { error: 'Not enough stock available' },
+          { status: 409 }
+        )
+      }
+
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+
+      const [reservation] = await prisma.$transaction([
+        prisma.reservation.create({
+          data: { productId, warehouseId, quantity, expiresAt, status: 'PENDING' }
+        }),
+        prisma.stock.update({
+          where: { productId_warehouseId: { productId, warehouseId } },
+          data: { reserved: { increment: quantity } }
+        })
+      ])
+
+      return NextResponse.json(reservation, { status: 201 })
+    } finally {
+      const current = await redis.get(lockKey)
+      if (current === lockValue) {
+        await redis.del(lockKey)
+      }
     }
-  }
+  })
 }
