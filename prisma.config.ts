@@ -3,10 +3,10 @@ import path from 'node:path'
 import { defineConfig } from 'prisma/config'
 
 export default defineConfig({
-  schema: path.join('prisma', 'schema.prisma'),
+  schema: path.resolve(__dirname, 'prisma', 'schema.prisma'),
 
   datasource: {
-    url: process.env.DIRECT_URL, // Used by the CLI
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL, // Used by the CLI
   },
 
   migrations: {

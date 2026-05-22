@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { withIdempotency } from '@/lib/idempotency'
 import { prisma } from '@/lib/prisma'
 import { redis } from '@/lib/redis'
-import { withIdempotency } from '@/lib/idempotency'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+      const expiresAt = new Date(Date.now() + 20 * 1000)
 
       const [reservation] = await prisma.$transaction([
         prisma.reservation.create({
